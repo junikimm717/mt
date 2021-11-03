@@ -6,12 +6,10 @@ use std::path::PathBuf;
 use std::process::Command;
 use toml;
 
-fn get_config(configpath: &PathBuf) -> Config {
+fn get_config(configpath: &PathBuf) -> Result<Result<Config, toml::de::Error>, std::io::Error> {
     match fs::read_to_string(configpath) {
-        Ok(s) => Config::from(&s),
-        Err(e) => {
-            panic!("~/.config/mt/config_v2.toml is inaccessible. {}", e);
-        }
+        Ok(s) => Ok(Config::from(&s)),
+        Err(e) => Err(e),
     }
 }
 
@@ -24,7 +22,7 @@ fn open_url(config: &Config, url: &String) {
     Command::new("sh")
         .arg("-c")
         .arg(browsercmd + " " + url)
-        .output()
+        .spawn()
         .expect("Process failed");
 }
 
@@ -51,6 +49,7 @@ fn determine_from_alias(config: &Config, alias: String) {
     }
 }
 
+/// check the configuration.
 fn check(config: &Config) {
     config.check_syntax();
 }
@@ -78,23 +77,34 @@ fn create_config(configpath: &PathBuf) {
     }
 }
 
+
 fn main() {
     let mut configpath: PathBuf = home_dir().unwrap();
     configpath.push(".config");
     configpath.push("mt");
     configpath.push("config_v2.toml");
 
-    if cfg!(windows) {
-        eprintln!("No support");
-        return;
+    if std::env::args().nth(1) == Some("--config".to_string()) {
+                create_config(&configpath);
+                return;
     }
-    let config = get_config(&configpath);
+    let config = match get_config(&configpath) {
+        Ok(fileread) => match fileread {
+            Ok(data) => data,
+            Err(e) => {
+                eprintln!("Unable to parse the config file. {:?}", e);
+                return;
+            }
+        },
+        Err(e) => {
+            eprintln!("Unable to read the config file. {:?}", e);
+            return;
+        }
+    };
     match std::env::args().nth(1) {
         Some(x) => {
             if x == "--check" {
                 check(&config);
-            } else if x == "--config" {
-                create_config(&configpath);
             } else {
                 determine_from_alias(&config, x)
             }

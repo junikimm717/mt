@@ -1,7 +1,6 @@
 use crate::time::{Time, RE, RE2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::option::Option::{None, Some};
 use toml::from_str;
 
 use chrono::prelude::*;
@@ -59,7 +58,7 @@ impl Schedule {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Meeting {
     url: String,
-    pub aliases: Option<Vec<String>>,
+    aliases: Option<Vec<String>>,
     monday: Option<String>,
     tuesday: Option<String>,
     wednesday: Option<String>,
@@ -99,12 +98,12 @@ pub struct Config {
 impl Config {
     /// Creates a default configuration struct.
     pub fn default() -> Self {
-        Config {
-            settings: Settings {
-                browser: (String::from("firefox")),
-                time: (5),
-            },
-            schedule: Schedule {
+        let mut sample_meeting = HashMap::new();
+        sample_meeting.insert(
+            String::from("sample"),
+            Meeting {
+                url: String::from("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+                aliases: Some(vec!["s".to_string(), "sp".to_string()]),
                 monday: None,
                 tuesday: None,
                 wednesday: None,
@@ -113,7 +112,22 @@ impl Config {
                 saturday: None,
                 sunday: None,
             },
-            meetings: Some(HashMap::new()),
+        );
+        Config {
+            settings: Settings {
+                browser: (String::from("firefox")),
+                time: (5),
+            },
+            schedule: Schedule {
+                monday: Some(HashMap::default()),
+                tuesday: Some(HashMap::default()),
+                wednesday: Some(HashMap::default()),
+                thursday: Some(HashMap::default()),
+                friday: Some(HashMap::default()),
+                saturday: Some(HashMap::default()),
+                sunday: Some(HashMap::default()),
+            },
+            meetings: Some(sample_meeting),
         }
     }
     pub fn browser(&self) -> String {
@@ -122,15 +136,8 @@ impl Config {
     pub fn time_threshold(&self) -> u32 {
         self.settings.time
     }
-    pub fn from(s: &str) -> Self {
-        return from_str::<Config>(s).expect("Unable to read configuration file");
-    }
-    /// Default configuration
-    fn all_meetings(&self) -> HashSet<String> {
-        match &self.meetings {
-            Some(meetings) => meetings.keys().map(|x| x.clone()).collect(),
-            None => HashSet::default(),
-        }
+    pub fn from(s: &str) -> Result<Self, toml::de::Error> {
+        return from_str::<Config>(s);
     }
 
     /// vector of all meetings (and URLs) that are available today
@@ -200,7 +207,8 @@ impl Config {
 
     /// check if all meetings outlined in the schedule actually exist.
     fn check_meetings(&self) -> Result<(), (String, String)> {
-        let hs = self.all_meetings();
+        let mp = self.aliases_to_hashmap();
+        let hs = mp.keys().collect::<HashSet<&String>>();
         let schedule = self.schedule_to_hashmap();
         for (weekday, map) in &schedule {
             for x in map.values() {
