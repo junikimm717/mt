@@ -1,11 +1,17 @@
 # mt
 
-The arbitrary meeting joining script, rewritten in rust from perl.
+The arbitrary meeting launcher, rewritten in rust from perl.
 
 # Calling the program
 
 ```sh
 mt (meeting name or alias)
+```
+
+If you want `mt` to automatically determine the meeting you should join,
+
+```sh
+mt
 ```
 
 # Installation
@@ -58,7 +64,7 @@ This will check the following:
 ```toml
 [ settings ]
 browser = "Your browser binary/application here"
-time = (Minutes before you want to start a meeting)
+time = "(Minutes before you want to start a meeting)"
 ```
 
 In MacOS, the browser will be launched as an application, whereas in UNIX, it
