@@ -24,12 +24,7 @@ impl Time {
     pub fn to_int(&self) -> u32 {
         // if it's 12AM, it should be 0
         let hour = self.hour % 12 + if self.ampm == AMPM::PM { 12 } else { 0 };
-        hour * 60
-            + self.minute
-            + match &self.ampm {
-                AMPM::AM => 0,
-                AMPM::PM => 12 * 60,
-            }
+        hour * 60 + self.minute
     }
     pub fn now() -> u32 {
         let now = chrono::Local::now();
