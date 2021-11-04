@@ -77,7 +77,6 @@ fn create_config(configpath: &PathBuf) {
     }
 }
 
-
 fn main() {
     let mut configpath: PathBuf = home_dir().unwrap();
     configpath.push(".config");
@@ -85,8 +84,8 @@ fn main() {
     configpath.push("config_v2.toml");
 
     if std::env::args().nth(1) == Some("--config".to_string()) {
-                create_config(&configpath);
-                return;
+        create_config(&configpath);
+        return;
     }
     let config = match get_config(&configpath) {
         Ok(fileread) => match fileread {
@@ -109,6 +108,8 @@ fn main() {
                 determine_from_alias(&config, x)
             }
         }
-        None => auto_determine(&config),
+        None => {
+            auto_determine(&config)
+        }
     }
 }
