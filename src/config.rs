@@ -10,6 +10,7 @@ use chrono::Weekday;
 pub struct Settings {
     time: u32,
     browser: String,
+    editor: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -98,25 +99,29 @@ pub struct Config {
 impl Config {
     /// Creates a default configuration struct.
     pub fn default() -> Self {
-        let mut sample_meeting = HashMap::new();
-        sample_meeting.insert(
-            String::from("sample"),
-            Meeting {
-                url: String::from("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-                aliases: Some(vec!["s".to_string(), "sp".to_string()]),
-                monday: None,
-                tuesday: None,
-                wednesday: None,
-                thursday: None,
-                friday: None,
-                saturday: None,
-                sunday: None,
-            },
-        );
+        let sample_meeting = {
+            let mut mp = HashMap::new();
+            mp.insert(
+                String::from("sample"),
+                Meeting {
+                    url: String::from("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+                    aliases: Some(vec!["s".to_string(), "sp".to_string()]),
+                    monday: None,
+                    tuesday: None,
+                    wednesday: None,
+                    thursday: None,
+                    friday: None,
+                    saturday: None,
+                    sunday: None,
+                },
+            );
+            mp
+        };
         Config {
             settings: Settings {
                 browser: (String::from("firefox")),
                 time: (5),
+                editor: Some("/usr/bin/vi".to_string()),
             },
             schedule: Schedule {
                 monday: Some(HashMap::default()),
@@ -132,6 +137,9 @@ impl Config {
     }
     pub fn browser(&self) -> String {
         self.settings.browser.clone()
+    }
+    pub fn editor(&self) -> Option<String> {
+        self.settings.editor.clone()
     }
     pub fn time_threshold(&self) -> u32 {
         self.settings.time

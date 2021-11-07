@@ -1,6 +1,8 @@
 use home::home_dir;
 use mt::config::Config;
 use mt::time::Time;
+use mt::opt::Opt;
+use structopt::StructOpt;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -13,6 +15,11 @@ fn get_config(configpath: &PathBuf) -> Result<Result<Config, toml::de::Error>, s
     }
 }
 
+fn config_exists(configpath: &PathBuf) -> bool {
+
+    std::path::Path::new(&configpath).exists()
+    }
+
 fn open_url(config: &Config, url: &String) {
     let mut browsercmd = config.browser();
     if cfg!(target_os = "macos") {
@@ -24,6 +31,25 @@ fn open_url(config: &Config, url: &String) {
         .arg(browsercmd + " " + url)
         .spawn()
         .expect("Process failed");
+}
+
+fn edit_config(config: &Config, configpath: &PathBuf) {
+    let editor = config.editor();
+    if !config_exists(&configpath) {
+        create_config(&configpath);
+    }
+    match editor {
+        Some(ed) => {
+            Command::new("sh")
+                .arg("-c")
+                .arg(ed + " " + configpath.to_str().unwrap())
+                .status()
+                .expect("Could not edit configuration");
+        }
+        None => {
+            eprintln!("No editor found.")
+        }
+    }
 }
 
 fn auto_determine(config: &Config) {
@@ -54,13 +80,10 @@ fn check(config: &Config) {
     config.check_syntax();
 }
 
+/// creates a new connfiguration file
+/// warns the user if a configuration file is already present.
 fn create_config(configpath: &PathBuf) {
-    let mut input = String::new();
-    println!(
-        "Are you sure you want to overwrite any existing configurations at ~/.config/mt/config_v2.toml? [Y/n]"
-    );
-    std::io::stdin().read_line(&mut input).expect("fail");
-    if input.len() >= 1 && input.chars().next().unwrap() == 'Y' {
+    let overwrite = || {
         Command::new("sh")
             .arg("-c")
             .arg(String::from("mkdir -p ") + (*configpath.parent().unwrap()).to_str().unwrap())
@@ -68,25 +91,42 @@ fn create_config(configpath: &PathBuf) {
             .expect("Could not create directory");
         std::fs::write(
             configpath,
-            &toml::to_string::<Config>(&Config::default()).unwrap()[..],
+            &toml::to_string::<Config>(&Config::default()).unwrap(),
         )
         .expect("failed to write");
+    };
+    if config_exists(&configpath) {
+        let mut input = String::new();
+        println!(
+        "Are you sure you want to overwrite any existing configurations at ~/.config/mt/config_v2.toml? [Y/n]"
+    );
+        std::io::stdin().read_line(&mut input).expect("fail");
+        if input.len() >= 1 && input.chars().next().unwrap() == 'Y' {
+            overwrite();
+        } else {
+            println!("creation of default config aborted");
+            return;
+        }
     } else {
-        println!("creation of default config aborted");
-        return;
+        overwrite();
     }
 }
 
 fn main() {
-    let mut configpath: PathBuf = home_dir().unwrap();
-    configpath.push(".config");
-    configpath.push("mt");
-    configpath.push("config_v2.toml");
+    let configpath: PathBuf = {
+        let mut x = home_dir().unwrap();
+        x.push(".config");
+        x.push("mt");
+        x.push("config_v2.toml");
+        x
+    };
+    let args = Opt::from_args();
 
-    if std::env::args().nth(1) == Some("--config".to_string()) {
+    if args.configure {
         create_config(&configpath);
         return;
     }
+
     let config = match get_config(&configpath) {
         Ok(fileread) => match fileread {
             Ok(data) => data,
@@ -100,16 +140,16 @@ fn main() {
             return;
         }
     };
-    match std::env::args().nth(1) {
-        Some(x) => {
-            if x == "--check" {
-                check(&config);
-            } else {
-                determine_from_alias(&config, x)
-            }
-        }
-        None => {
-            auto_determine(&config)
+
+    if args.check {
+        check(&config);
+    } else if args.edit {
+        edit_config(&config, &configpath);
+    } else {
+        if let Some(alias) = args.alias {
+            determine_from_alias(&config, alias);
+        } else {
+            auto_determine(&config);
         }
     }
 }
