@@ -2,6 +2,7 @@ use chrono::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+#[derive(PartialEq)]
 enum AMPM {
     AM,
     PM,
@@ -22,20 +23,8 @@ impl Time {
     /// converts time to minutes since midnight
     pub fn to_int(&self) -> u32 {
         // if it's 12AM, it should be 0
-        if self.hour == 12
-            && match self.ampm {
-                AMPM::AM => true,
-                _ => false,
-            }
-        {
-            self.minute as u32;
-        }
-        self.hour * 60
-            + self.minute
-            + match &self.ampm {
-                AMPM::AM => 0,
-                AMPM::PM => 12 * 60,
-            }
+        let hour = self.hour % 12 + if self.ampm == AMPM::PM { 12 } else { 0 };
+        hour * 60 + self.minute
     }
     pub fn now() -> u32 {
         let now = chrono::Local::now();
