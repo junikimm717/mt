@@ -32,12 +32,17 @@ Check out the [Releases](https://github.com/junikimm717/mt/releases).
 
 # Configuration
 
-## Default 
+## Editor
+
+You may customize your editor for the configuration file with the environmental
+variable `MT_EDITOR`. The default editor is vi.
+
+## Default
 
 In order to create a default configuration file, run
 
 ```sh
-mt --config
+mt --configure
 ```
 
 The config file resides in `~/.config/mt/config_v2.toml` to distinguish itself

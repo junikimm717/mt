@@ -10,7 +10,6 @@ use chrono::Weekday;
 pub struct Settings {
     time: u32,
     browser: String,
-    editor: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -121,7 +120,6 @@ impl Config {
             settings: Settings {
                 browser: (String::from("firefox")),
                 time: (5),
-                editor: Some("/usr/bin/vi".to_string()),
             },
             schedule: Schedule {
                 monday: Some(HashMap::default()),
@@ -137,9 +135,6 @@ impl Config {
     }
     pub fn browser(&self) -> String {
         self.settings.browser.clone()
-    }
-    pub fn editor(&self) -> Option<String> {
-        self.settings.editor.clone()
     }
     pub fn time_threshold(&self) -> u32 {
         self.settings.time
@@ -250,7 +245,8 @@ impl Config {
     pub fn meetings(&self) -> &Option<HashMap<String, Meeting>> {
         &self.meetings
     }
-    pub fn check_syntax(&self) {
+    /// check if no inconsistencies exist
+    pub fn check_semantics(&self) {
         if let Err(s) = self.check_aliases() {
             eprintln!("Duplicated Alias '{}'", s);
             return;

@@ -1,11 +1,12 @@
 use home::home_dir;
 use mt::config::Config;
-use mt::time::Time;
 use mt::opt::Opt;
-use structopt::StructOpt;
+use mt::time::Time;
+use std::env::var;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use structopt::StructOpt;
 use toml;
 
 fn get_config(configpath: &PathBuf) -> Result<Result<Config, toml::de::Error>, std::io::Error> {
@@ -16,9 +17,8 @@ fn get_config(configpath: &PathBuf) -> Result<Result<Config, toml::de::Error>, s
 }
 
 fn config_exists(configpath: &PathBuf) -> bool {
-
     std::path::Path::new(&configpath).exists()
-    }
+}
 
 fn open_url(config: &Config, url: &String) {
     let mut browsercmd = config.browser();
@@ -33,23 +33,16 @@ fn open_url(config: &Config, url: &String) {
         .expect("Process failed");
 }
 
-fn edit_config(config: &Config, configpath: &PathBuf) {
-    let editor = config.editor();
+fn edit_config(editor: String, configpath: &PathBuf) {
     if !config_exists(&configpath) {
         create_config(&configpath);
     }
-    match editor {
-        Some(ed) => {
-            Command::new("sh")
-                .arg("-c")
-                .arg(ed + " " + configpath.to_str().unwrap())
-                .status()
-                .expect("Could not edit configuration");
-        }
-        None => {
-            eprintln!("No editor found.")
-        }
-    }
+    Command::new("sh")
+        .arg("-c")
+        .arg(editor + " " + configpath.to_str().unwrap())
+        .status()
+        .expect("Could not edit configuration");
+    check(&configpath);
 }
 
 fn auto_determine(config: &Config) {
@@ -76,8 +69,21 @@ fn determine_from_alias(config: &Config, alias: String) {
 }
 
 /// check the configuration.
-fn check(config: &Config) {
-    config.check_syntax();
+fn check(configpath: &PathBuf) {
+    let config = match get_config(&configpath) {
+        Ok(fileread) => match fileread {
+            Ok(data) => data,
+            Err(e) => {
+                eprintln!("Unable to parse the config file. {:?}", e);
+                return;
+            }
+        },
+        Err(e) => {
+            eprintln!("Unable to read the config file. {:?}", e);
+            return;
+        }
+    };
+    config.check_semantics();
 }
 
 /// creates a new connfiguration file
@@ -125,27 +131,31 @@ fn main() {
     if args.configure {
         create_config(&configpath);
         return;
+    } else if args.edit {
+        let editor = match var("MT_EDITOR") {
+            Ok(x) => x,
+            Err(_) => "vi".to_owned(),
+        };
+        edit_config(editor, &configpath);
+        return;
     }
 
-    let config = match get_config(&configpath) {
-        Ok(fileread) => match fileread {
-            Ok(data) => data,
+    if args.check {
+        check(&configpath);
+    } else {
+        let config = match get_config(&configpath) {
+            Ok(fileread) => match fileread {
+                Ok(data) => data,
+                Err(e) => {
+                    eprintln!("Unable to parse the config file. {:?}", e);
+                    return;
+                }
+            },
             Err(e) => {
-                eprintln!("Unable to parse the config file. {:?}", e);
+                eprintln!("Unable to read the config file. {:?}", e);
                 return;
             }
-        },
-        Err(e) => {
-            eprintln!("Unable to read the config file. {:?}", e);
-            return;
-        }
-    };
-
-    if args.check {
-        check(&config);
-    } else if args.edit {
-        edit_config(&config, &configpath);
-    } else {
+        };
         if let Some(alias) = args.alias {
             determine_from_alias(&config, alias);
         } else {
