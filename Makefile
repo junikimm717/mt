@@ -2,7 +2,7 @@ TARGET=./target/release/mt
 PREFIX=/usr/local
 
 $(TARGET):
-	/usr/bin/cargo build --release
+	cargo build --release
 	chmod +x $(TARGET)
 
 install: $(TARGET)
