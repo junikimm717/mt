@@ -225,7 +225,7 @@ impl Config {
 
     /// check if aliases conflict with one another
     fn check_aliases(&self) -> Result<(), String> {
-        let hs = HashSet::<String>::default();
+        let mut hs = HashSet::<String>::default();
         if let Some(mt) = &self.meetings {
             for v in mt.values() {
                 if let Some(aliases) = &v.aliases {
@@ -233,6 +233,7 @@ impl Config {
                         if hs.contains(alias) {
                             return Err(alias.clone());
                         }
+                        hs.insert(alias.clone());
                     }
                 }
             }
